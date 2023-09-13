@@ -1,5 +1,4 @@
-
-#%%
+# %%
 import math
 import numpy as np
 from glob import glob
@@ -12,22 +11,32 @@ from sklearn.metrics import mean_squared_error
 from sklearn import preprocessing
 from sklearn.svm import SVR
 
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, LSTM, RepeatVector, TimeDistributed, GRU
-from tensorflow.keras.losses import mean_absolute_error, mean_squared_error, mean_squared_logarithmic_error
-from tensorflow.keras.optimizers import SGD, Adam, RMSprop, Adagrad
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
-from tensorflow.keras.metrics import mean_absolute_percentage_error as MAPE
+# import tensorflow as tf
+# from tensorflow.keras.models import Sequential
+# from tensorflow.keras.layers import Dense, LSTM, RepeatVector, TimeDistributed, GRU
+# from tensorflow.keras.losses import mean_absolute_error, mean_squared_error, mean_squared_logarithmic_error
+# from tensorflow.keras.optimizers import SGD, Adam, RMSprop, Adagrad
+# from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+# from tensorflow.keras.metrics import mean_absolute_percentage_error as MAPE
+
+# | à revoir : les import si dessus ont été remplacés par ceux ci dessous
+
+from keras.models import Sequential
+from keras.layers import Dense, LSTM, RepeatVector, TimeDistributed, GRU
+from keras.losses import mean_absolute_error, mean_squared_error, mean_squared_logarithmic_error
+from keras.optimizers import SGD, Adam, RMSprop, Adagrad
+from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.metrics import mean_absolute_percentage_error as MAPE
 
 
-#%%
+# %%
 
-def read_data (path = 'data/fdata_Timestep_60'):
+def read_data(path='/home/winimoid/Documents/Projets/Prediction/data/custom_fdata_Timestep_60'):
     with open(path) as f:
         lines = f.read().splitlines()
     series = np.array(list(map(int, lines)))
     return series
+
 
 def train_test_split(dataset, train_frac):
     """
@@ -35,9 +44,8 @@ def train_test_split(dataset, train_frac):
     :param train_frac: The percentage of the training set from the whole data
     :return: Couple of (Train set, Test set)
     """
-    train_size = int(len(dataset)*train_frac)
+    train_size = int(len(dataset) * train_frac)
     return dataset[:train_size], dataset[train_size:]
-
 
 
 def create_datasets(dataset, look_back=1, look_ahead=1):
@@ -47,13 +55,15 @@ def create_datasets(dataset, look_back=1, look_ahead=1):
     :return: Couples consists of ( look_back Values of the series, The observed value of the series )
     """
     data_x, data_y = [], []
-    for i in range(len(dataset)-look_back-look_ahead+1):
-        window = dataset[i:(i+look_back)]
+    for i in range(len(dataset) - look_back - look_ahead + 1):
+        window = dataset[i:(i + look_back)]
         data_x.append(window)
         data_y.append(dataset[i + look_back:i + look_back + look_ahead])
     return np.array(data_x), np.array(data_y)
 
-def plot_series(time, series, format="-", start=0, end=None, figsize=(10,6), xlabel="Time", ylabel="Paclets per Second", path="test.png"):
+
+def plot_series(time, series, format="-", start=0, end=None, figsize=(10, 6), xlabel="Time",
+                ylabel="Paclets per Second", path="test.png"):
     """
     :param time: represents the granularity of time ( 1 second or 1 Minute)
     :param series: The values of the network traffic volume over time
@@ -74,7 +84,8 @@ def plot_series(time, series, format="-", start=0, end=None, figsize=(10,6), xla
     # plt.savefig(path)
     # plt.close()
 
-def plot_hist(data, bins = 20 , xlabel = "" , ylabel = "" , title = "", path="test1.png"):
+
+def plot_hist(data, bins=20, xlabel="", ylabel="", title="", path="test1.png"):
     """
     :param data: The values of the network traffic volume over time
     :param bins: The sequence, or the edges presented in the figure
@@ -83,8 +94,8 @@ def plot_hist(data, bins = 20 , xlabel = "" , ylabel = "" , title = "", path="te
     :param title:
     :return: A histogram represent the distribution of the data
     """
-    plt.hist(data, bins, color = 'green',
-            edgecolor = 'black')
+    plt.hist(data, bins, color='green',
+             edgecolor='black')
 
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
@@ -93,10 +104,11 @@ def plot_hist(data, bins = 20 , xlabel = "" , ylabel = "" , title = "", path="te
     plt.savefig(path)
     plt.close()
 
-def build_seq2seq_model(look_ahead = 1):
+
+def build_seq2seq_model(look_ahead=1):
     m = Sequential()
     # encoder
-    m.add(GRU(16, input_dim = 1))
+    m.add(GRU(16, input_dim=1))
     # repeat for the number of steps out
     m.add(RepeatVector(look_ahead))
     # decoder
@@ -105,27 +117,29 @@ def build_seq2seq_model(look_ahead = 1):
     # split the output into timesteps
     m.add(TimeDistributed(Dense(1)))
     m.compile(loss='mse', optimizer='rmsprop')
-    #m.summary()
+    # m.summary()
     return m
+
 
 def reverse_scale(data, mean, std):
     for x in np.nditer(data, op_flags=['readwrite']):
-        x[...] = x*std + mean
+        x[...] = x * std + mean
     return data
+
 
 def calculate_error(train_y, test_y, pred_train, pred_test):
     test_score = math.sqrt(mean_squared_error(test_y, pred_test))
     train_score = math.sqrt(mean_squared_error(train_y, pred_train))
     return train_score, test_score
 
+
 def mean_absolute_percentage(y, y_pred):
     return np.mean(np.abs((y - y_pred) / y)) * 100
 
 
 def plot_1_error(pred_test, test_y, er1, path="test.png"):
-
     fig = plt.figure(1, (18, 13))
-    test_y  = test_y.reshape(len(test_y))
+    test_y = test_y.reshape(len(test_y))
     pred_test = pred_test.reshape(len(pred_test))
     plt.plot(test_y, label="Observed")
     plt.plot(pred_test, color="red", label="Predicted, MAPE: " + str(round(er1, 5)) + "%")
@@ -133,7 +147,9 @@ def plot_1_error(pred_test, test_y, er1, path="test.png"):
     plt.ylabel("Number of Packets / minute")
     plt.legend(loc=1, fontsize=8, framealpha=0.8)
     plt.savefig(path)
+    # plt.show()
     plt.close()
+
 
 def plot_4_errors(pred_test, test_y, er1, er2, er3, er4, path="test.png"):
     fig = plt.figure(1, (18, 13))
@@ -165,4 +181,3 @@ def plot_4_errors(pred_test, test_y, er1, er2, er3, er4, path="test.png"):
     # plt.show()
     plt.savefig(path)
     plt.close()
-

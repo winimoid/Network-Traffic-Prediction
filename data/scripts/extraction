@@ -1,10 +1,18 @@
 #!/bin/sh
 
-for file in *.pcap
+# Pour tout fichier pcap
+#for file in *.pcap
+for file in "/home/winimoid/Documents/Projets/Prediction/custom/Captures"/*.pcap;
 do
+  # supprime tout ce qui suit et y compris le dernier point dans la valeur de la variable file.
+  # (motif de suppression de l'extension dufichier)
 	FILE=${file%%.*}
-	echo "Traitement du fichier : " $file
-	tshark -r $file -T fields -e frame.time_epoch -e frame.len >> data
+
+	echo "Traitement du fichier : " "$file"
+
+	# lit le fichier pcap file et imprime les horodatages et les longueurs des frames
+	# dans le fichier data.
+	tshark -r "$file" -T fields -e frame.time_epoch -e frame.len >> "$FILE"_data
 #	awk '{ print $1-1037905200 $2}' data >> final_data
 done
 
